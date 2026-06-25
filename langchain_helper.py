@@ -2,35 +2,28 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 from langchain_community.document_loaders import YoutubeLoader  
 from langchain_text_splitters import RecursiveCharacterTextSplitter 
 from langchain_core.prompts import ChatPromptTemplate  
-from langchain_community.vectorstores import DocArrayInMemorySearch  # <-- 1. Changed to DocArray
-from dotenv import load_dotenv
-import os
+from langchain_community.vectorstores import DocArrayInMemorySearch  
 
-# Load the .env file
-load_dotenv()
-
-api_key = os.getenv("GOOGLE_API_KEY")
-
-# Initialize the Google Embeddings Model
-embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=api_key)
-
-def create_vectordb_from_youtube(youtube_url: str) -> DocArrayInMemorySearch:
-    # Load the YouTube video transcript
+# 1. Accept api_key as a parameter here
+def create_vectordb_from_youtube(youtube_url: str, api_key: str) -> DocArrayInMemorySearch:
+    # Pass the user's api_key straight to the embeddings engine
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=api_key)
+    
     loader = YoutubeLoader.from_youtube_url(youtube_url)
     transcript = loader.load()
     
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     docs = text_splitter.split_documents(transcript)
     
-    # <-- 2. Changed to DocArray initialization here
     db = DocArrayInMemorySearch.from_documents(docs, embeddings) 
     return db
     
-def get_response_from_query(db, query, k=3): 
+# 2. Accept api_key as a parameter here too
+def get_response_from_query(db, query: str, api_key: str, k=3): 
     docs = db.similarity_search(query, k=k)
     docs_page_contents = " ".join([doc.page_content for doc in docs])
     
-    
+    # Pass the user's api_key straight to the LLM engine
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7, google_api_key=api_key)
     
     prompt = ChatPromptTemplate.from_template(
